@@ -12,22 +12,17 @@ RETURNS = os.path.join(DATA, "Returns")
 SCORES = os.path.join(DATA, "Scores")
 firm_names = os.path.join(DATA, "firm_names.xlsx")
 
-
-def read_excel(filename, ):
-    return pd.DataFrame(pd.read_excel(filename))
-
-
 if __name__ == '__main__':
-    names = read_excel(firm_names)
+    names = pd.read_excel(firm_names)
     emerging_countries = ['AE', "AR", "BR", "CL", "CN", "CO", "CZ", "EG", "GR", "HU", "ID", "IN", "KR", "KV", "MX",
                           "MY", "PE", "PH", "PK", "PL", "QA", "RU", "SA", "TH", "TR", "TW", "ZA"]
     emerging_firms = list(names[names['Country'].isin(emerging_countries)]["ISIN"])
-    env_scores = read_excel(os.path.join(SCORES, "Env.xlsx"))
+    env_scores = pd.read_excel(os.path.join(SCORES, "Env.xlsx"))
     env_scores.dropna(how='all', axis=1, inplace=True)
     env_scores_firms = env_scores.columns
     filtered = [emerging_firm for emerging_firm in emerging_firms if emerging_firm in env_scores_firms]
 
-    returns = read_excel(os.path.join(RETURNS, "monthlyreturns.xlsx"))
+    returns = pd.read_excel(os.path.join(RETURNS, "monthlyreturns.xlsx"))
     returns = returns.rename(columns={"Unnamed: 0": "timestamp"})
     returns = returns[["timestamp"] + filtered]
 
@@ -86,4 +81,8 @@ if __name__ == '__main__':
     first_two_years = best_asset_monthly_returns.loc[142:142 + 24]
     avg_revenue = first_two_years[best_asset["firm"]].mean()  # è quello che vuole?
 
-    
+    # ex 4:
+
+
+
+
