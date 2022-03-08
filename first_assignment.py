@@ -3,6 +3,10 @@ import pandas as pd
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+import warnings
+from statistics import mean
+from pandas_datareader import data as wb
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 DIR = os.getcwd()
 DATA = os.path.join(DIR, "Data_Excel", "MSCI_ESGscores")
@@ -39,25 +43,36 @@ if __name__ == '__main__':
     print("correlation: ", correlation)
 
     # ex 2:
-    print("Equally weighted portfoglio:")
-    # print(solution[['annualized_return', "annualized_volatility"]].mean())
+    print("\nEqually weighted portfolio:")
     monthly_portfolio_returns_eq = returns[filtered].mean(axis=1)
     annualized_return_eq = monthly_portfolio_returns_eq.mean() * 12
     min_return = min(monthly_portfolio_returns_eq)
     max_return = max(monthly_portfolio_returns_eq)
     annualized_volatility_eq = np.std(monthly_portfolio_returns_eq) * math.sqrt(12)
     rf_mean = pd.read_excel(os.path.join(FF, "devrf.xlsx"), header=None)[1].mean() * 12
-    sharp_ratio = (annualized_volatility_eq - rf_mean) / annualized_volatility_eq
+    sharp_ratio = (annualized_return_eq - rf_mean) / annualized_volatility_eq
     print("annualized return: ", annualized_return_eq, ", annualized_volatility:", annualized_volatility_eq)
     print("min return: ", min_return, ", max return: ", max_return, ", sharp_ratio: ", sharp_ratio)
-    #
-    # # value-weighted
-    # size = pd.read_excel(os.path.join(FUNDAMENTALS, "size.xlsx"))[filtered]
-    # for i in range(len(size)+1):
-    #     weights = size.iloc[i]
-    #     returns_ = returns.iloc[i]
-    #     weighted_avg = np.average(returns_, weights=weights)
-    #     print(weighted_avg)
+
+    # value-weighted
+    print("\nMarket value weighted portfolio:")
+    size = pd.read_excel(os.path.join(FUNDAMENTALS, "size.xlsx"))[filtered]
+    avg_returns = []
+    for i in range(len(size)):
+        weights = list(size.iloc[i].fillna(0))
+        returns_ = returns.drop("timestamp", 1)
+        returns_ = list(returns_.iloc[i].fillna(0))
+        weighted_avg = np.average(returns_, weights=weights)
+        avg_returns.append(weighted_avg)
+
+    # fare una funzione per le statistiche e i plot
+    annualized_return_mc = mean(avg_returns) * 12
+    annualized_volatility_mc = np.std(avg_returns) * math.sqrt(12)
+    min_return = min(avg_returns)
+    max_return = max(avg_returns)
+    sharp_ratio = (annualized_return_mc - rf_mean) / annualized_volatility_mc
+    print("annualized return: ", annualized_return_mc, ", annualized_volatility:", annualized_volatility_mc)
+    print("min return: ", min_return, ", max return: ", max_return, ", sharp_ratio: ", sharp_ratio)
 
     # ex 3:
     best_asset = solution.iloc[solution["annualized_return"].idxmax()]
@@ -79,10 +94,33 @@ if __name__ == '__main__':
     # TODO: What explains the differences between a one-asset portfolio and a portfolio composed of many stocks?
 
     first_two_years = best_asset_monthly_returns.loc[142:142 + 24]
-    avg_revenue = first_two_years[best_asset["firm"]].mean()  # è quello che vuole?
+    avg_revenue = first_two_years[best_asset["firm"]].mean()  # c'è qualcosa che non va
+    start = 1
+    for i in list(first_two_years[best_asset['firm']]):
+        start = start * (1 + (i / 100))
+    print(start)
 
     # ex 4:
+    fifty_random = returns.sample(50, axis=1, random_state = 42)
+    test = returns[filtered].iloc[:2].fillna(0)
+    #test.cov() * 12
+    portfolio_returns = []
+    portfolio_volatilities = []
 
+    for x in range(100):
+        weights = np.random.random(test.shape[1])
+        weights /= np.sum(weights)
 
+        portfolio_returns.append(np.sum(weights * test.mean()) * 12)
+        portfolio_volatilities.append(np.sqrt(np.dot(weights.T, np.dot(test.cov() * 12, weights))))
 
+    portfolio_returns = np.array(portfolio_returns)
+    portfolio_volatilities = np.array(portfolio_volatilities)
 
+    print(portfolio_returns, portfolio_volatilities)
+    #np.sum(weights * test.mean()) * 12
+    #np.sqrt(np.dot(weights.T, np.dot(test.cov() * 12, weights)))
+    portfolios = pd.DataFrame({'Return': portfolio_returns, 'Volatility': portfolio_volatilities})
+    portfolios.plot(x='Volatility', y='Return', kind='scatter', figsize=(15, 10));
+    plt.xlabel('Expected Volatility')
+    plt.ylabel('Expected Return')
