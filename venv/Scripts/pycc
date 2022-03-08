@@ -1,0 +1,3 @@
+#!C:\Users\massi\Documents\Università\MASTER_EPFL\Second_semester\sustainable and entrepreneurial finance\venv\Scripts\python.exe
+from numba.pycc import main
+main()

@@ -1,0 +1,89 @@
+import os
+import pandas as pd
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+
+DIR = os.getcwd()
+DATA = os.path.join(DIR, "Data_Excel", "MSCI_ESGscores")
+FF = os.path.join(DATA, "FF")
+FUNDAMENTALS = os.path.join(DATA, "Fundamentals")
+RETURNS = os.path.join(DATA, "Returns")
+SCORES = os.path.join(DATA, "Scores")
+firm_names = os.path.join(DATA, "firm_names.xlsx")
+
+
+def read_excel(filename, ):
+    return pd.DataFrame(pd.read_excel(filename))
+
+
+if __name__ == '__main__':
+    names = read_excel(firm_names)
+    emerging_countries = ['AE', "AR", "BR", "CL", "CN", "CO", "CZ", "EG", "GR", "HU", "ID", "IN", "KR", "KV", "MX",
+                          "MY", "PE", "PH", "PK", "PL", "QA", "RU", "SA", "TH", "TR", "TW", "ZA"]
+    emerging_firms = list(names[names['Country'].isin(emerging_countries)]["ISIN"])
+    env_scores = read_excel(os.path.join(SCORES, "Env.xlsx"))
+    env_scores.dropna(how='all', axis=1, inplace=True)
+    env_scores_firms = env_scores.columns
+    filtered = [emerging_firm for emerging_firm in emerging_firms if emerging_firm in env_scores_firms]
+
+    returns = read_excel(os.path.join(RETURNS, "monthlyreturns.xlsx"))
+    returns = returns.rename(columns={"Unnamed: 0": "timestamp"})
+    returns = returns[["timestamp"] + filtered]
+
+    annualized_return = pd.DataFrame(returns[filtered].mean() * 12, columns=["annualized_return"]).reset_index()
+    annualized_return = annualized_return.rename(columns={"index": "firm"})
+
+    annualized_volatility = pd.DataFrame(returns[filtered].apply(np.nanstd) * math.sqrt(12),
+                                         columns=["annualized_volatility"]).reset_index()
+    annualized_volatility = annualized_volatility.rename(columns={"index": "firm"})
+
+    solution = pd.merge(annualized_return, annualized_volatility)
+
+    correlation = solution['annualized_return'].corr(solution["annualized_volatility"])
+    print("correlation: ", correlation)
+
+    # ex 2:
+    print("Equally weighted portfoglio:")
+    # print(solution[['annualized_return', "annualized_volatility"]].mean())
+    monthly_portfolio_returns_eq = returns[filtered].mean(axis=1)
+    annualized_return_eq = monthly_portfolio_returns_eq.mean() * 12
+    min_return = min(monthly_portfolio_returns_eq)
+    max_return = max(monthly_portfolio_returns_eq)
+    annualized_volatility_eq = np.std(monthly_portfolio_returns_eq) * math.sqrt(12)
+    rf_mean = pd.read_excel(os.path.join(FF, "devrf.xlsx"), header=None)[1].mean() * 12
+    sharp_ratio = (annualized_volatility_eq - rf_mean) / annualized_volatility_eq
+    print("annualized return: ", annualized_return_eq, ", annualized_volatility:", annualized_volatility_eq)
+    print("min return: ", min_return, ", max return: ", max_return, ", sharp_ratio: ", sharp_ratio)
+    #
+    # # value-weighted
+    # size = pd.read_excel(os.path.join(FUNDAMENTALS, "size.xlsx"))[filtered]
+    # for i in range(len(size)+1):
+    #     weights = size.iloc[i]
+    #     returns_ = returns.iloc[i]
+    #     weighted_avg = np.average(returns_, weights=weights)
+    #     print(weighted_avg)
+
+    # ex 3:
+    best_asset = solution.iloc[solution["annualized_return"].idxmax()]
+    print("best asset: ")
+    print(best_asset)
+    best_asset_monthly_returns = returns[["timestamp", best_asset['firm']]].dropna()
+    plt.plot(list(best_asset_monthly_returns["timestamp"]), list(best_asset_monthly_returns["MXP904131325"]))
+    plt.xlabel("date")
+    plt.ylabel("return")
+    plt.title(str(best_asset["firm"] + "returns"))
+    plt.show()
+
+    plt.plot(list(returns["timestamp"]), list(monthly_portfolio_returns_eq))
+    plt.xlabel("date")
+    plt.ylabel("return")
+    plt.title("equally weighted portfolio")
+    plt.show()
+
+    # TODO: What explains the differences between a one-asset portfolio and a portfolio composed of many stocks?
+
+    first_two_years = best_asset_monthly_returns.loc[142:142 + 24]
+    avg_revenue = first_two_years[best_asset["firm"]].mean()  # è quello che vuole?
+
+    
