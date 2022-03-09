@@ -115,7 +115,7 @@ if __name__ == '__main__':
         weights = ef.min_volatility()
         returns_min_var.append(np.average(running_data.mean(), weights=list(weights.values())))
 
-    # funzione che fose dario farà un giorno
+    # funzione che forse dario farà un giorno
     annualized_return_mc = mean(returns_min_var) * 12
     annualized_volatility_mc = np.std(returns_min_var) * math.sqrt(12)
     min_return = min(returns_min_var)
