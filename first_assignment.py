@@ -5,7 +5,9 @@ import math
 import matplotlib.pyplot as plt
 import warnings
 from statistics import mean
+import pypfopt as opt
 from pandas_datareader import data as wb
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 DIR = os.getcwd()
@@ -101,26 +103,50 @@ if __name__ == '__main__':
     print(start)
 
     # ex 4:
-    fifty_random = returns.sample(50, axis=1, random_state = 42)
-    test = returns[filtered].iloc[:2].fillna(0)
-    #test.cov() * 12
-    portfolio_returns = []
-    portfolio_volatilities = []
+    print("\n min variance portfolio")
+    returns_min_var = []
+    fifty_random = returns.sample(50, axis=1, random_state=42)
+    for i in range(len(fifty_random)-1):
+        running_data = fifty_random.iloc[:2+i].copy()
+        running_data.dropna(how='all', axis=1, inplace=True)
+        running_data = running_data.fillna(0)
+        cov = running_data.cov()
+        ef = opt.EfficientFrontier(running_data.mean(), cov)
+        weights = ef.min_volatility()
+        returns_min_var.append(np.average(running_data.mean(), weights=list(weights.values())))
 
-    for x in range(100):
-        weights = np.random.random(test.shape[1])
-        weights /= np.sum(weights)
+    # funzione che fose dario farà un giorno
+    annualized_return_mc = mean(returns_min_var) * 12
+    annualized_volatility_mc = np.std(returns_min_var) * math.sqrt(12)
+    min_return = min(returns_min_var)
+    max_return = max(returns_min_var)
+    sharp_ratio = (annualized_return_mc - rf_mean) / annualized_volatility_mc
+    print("annualized return: ", annualized_return_mc, ", annualized_volatility:", annualized_volatility_mc)
+    print("min return: ", min_return, ", max return: ", max_return, ", sharp_ratio: ", sharp_ratio)
 
-        portfolio_returns.append(np.sum(weights * test.mean()) * 12)
-        portfolio_volatilities.append(np.sqrt(np.dot(weights.T, np.dot(test.cov() * 12, weights))))
 
-    portfolio_returns = np.array(portfolio_returns)
-    portfolio_volatilities = np.array(portfolio_volatilities)
 
-    print(portfolio_returns, portfolio_volatilities)
-    #np.sum(weights * test.mean()) * 12
-    #np.sqrt(np.dot(weights.T, np.dot(test.cov() * 12, weights)))
-    portfolios = pd.DataFrame({'Return': portfolio_returns, 'Volatility': portfolio_volatilities})
-    portfolios.plot(x='Volatility', y='Return', kind='scatter', figsize=(15, 10));
-    plt.xlabel('Expected Volatility')
-    plt.ylabel('Expected Return')
+
+
+    # test = returns[filtered].iloc[:2].fillna(0)
+    # #test.cov() * 12
+    # portfolio_returns = []
+    # portfolio_volatilities = []
+    #
+    # for x in range(100):
+    #     weights = np.random.random(test.shape[1])
+    #     weights /= np.sum(weights)
+    #
+    #     portfolio_returns.append(np.sum(weights * test.mean()) * 12)
+    #     portfolio_volatilities.append(np.sqrt(np.dot(weights.T, np.dot(test.cov() * 12, weights))))
+    #
+    # portfolio_returns = np.array(portfolio_returns)
+    # portfolio_volatilities = np.array(portfolio_volatilities)
+    #
+    # print(portfolio_returns, portfolio_volatilities)
+    # #np.sum(weights * test.mean()) * 12
+    # #np.sqrt(np.dot(weights.T, np.dot(test.cov() * 12, weights)))
+    # portfolios = pd.DataFrame({'Return': portfolio_returns, 'Volatility': portfolio_volatilities})
+    # portfolios.plot(x='Volatility', y='Return', kind='scatter', figsize=(15, 10));
+    # plt.xlabel('Expected Volatility')
+    # plt.ylabel('Expected Return')
